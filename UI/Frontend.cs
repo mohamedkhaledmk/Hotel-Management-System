@@ -15,6 +15,7 @@ using System.Configuration;
 using Twilio;
 using HotelManagementSystem.Repositories;
 using HotelManagementSystem.Entities.FrontendReservation;
+using HotelManagementSystem.Context.FrontendReservation;
 namespace HotelManagementSystem.UI
 {
     public partial class Frontend : MetroForm
@@ -201,7 +202,7 @@ namespace HotelManagementSystem.UI
             bool temp = int.TryParse(qtGuestComboBox.SelectedItem.ToString(), out selectedTemp);
             if (!temp)
             {
-                MetroFramework.MetroMessageBox.Show(this, "Enter # of guests first", "Error parsing", MessageBoxButtons.OK);
+                MessageBox.Show(this, "Enter # of guests first", "Error parsing", MessageBoxButtons.OK);
             }
             else
             {
@@ -292,9 +293,60 @@ namespace HotelManagementSystem.UI
                 smsCheckBox.Text = "SMS Sent";
             }
         }
+        private Reservation BuildReservationFromForm()
+        {
+            birthday = monthComboBox.SelectedItem + "-" + (dayComboBox.SelectedIndex + 1) + "-" + yearTextBox.Text;
 
+            return new Reservation
+            {
+                FirstName = firstNameTextBox.Text,
+                LastName = lastNameTextBox.Text,
+                BirthDay = birthday,
+                Gender = genderComboBox.SelectedItem?.ToString() ?? "",
+                PhoneNumber = phoneNumberTextBox.Text,
+                EmailAddress = emailTextBox.Text,
+                NumberGuest = int.TryParse(qtGuestComboBox.SelectedItem?.ToString(), out int g) ? g : 1,
+                StreetAddress = addLabel.Text,
+                AptSuite = aptTextBox.Text,
+                City = cityTextBox.Text,
+                State = stateComboBox.SelectedItem?.ToString() ?? "",
+                ZipCode = zipComboBox.Text,
+                RoomType = roomTypeComboBox.SelectedItem?.ToString() ?? "",
+                RoomFloor = floorComboBox.SelectedItem?.ToString() ?? "",
+                RoomNumber = roomNComboBox.SelectedItem?.ToString() ?? "",
+                TotalBill = finalizedTotalAmount,
+                PaymentType = paymentType ?? "",
+                CardType = CardType ?? "",
+                CardNumber = paymentCardNumber ?? "",
+                CardExp = MM_YY_Of_Card ?? "",
+                CardCvc = CVC_Of_Card ?? "",
+                ArrivalTime = DateOnly.FromDateTime(entryDatePicker.Value),
+                LeavingTime = DateOnly.FromDateTime(depDatePicker.Value),
+                CheckIn = checkin == 1,
+                BreakFast = breakfast,
+                Lunch = lunch,
+                Dinner = dinner,
+                Cleaning = cleaning == "1",
+                Towel = towel == "1",
+                SSurprise = surprise == "1",
+                SupplyStatus = foodStatus == 1,
+                FoodBill = foodBill
+            };
+        }
+
+        ReservationRepository Repository = new();
         private void submitButton_Click(object sender, EventArgs e)
         {
+            Reservation reservation = BuildReservationFromForm();
+            int newId = Repository.Create(reservation);
+            SendSMS(newId);
+            MessageBox.Show(this, "Entry Added Successfully!!🟢", "Entry Added!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            ComboBoxItemsFromDataBase();
+            LoadForDataGridView();
+            reset_frontend();
+            GetOccupiedRoom();
+            ReservedRoom();
+            getChecked();
             //birthday = (monthComboBox.SelectedItem) + "-" + (dayComboBox.SelectedIndex + 1) + "-" + yearTextBox.Text;
             //Int32 getIDBack = 0;
             //string query = "insert into reservation(first_name, last_name, birth_day, gender, phone_number, email_address, number_guest, street_address, apt_suite,city, state, zip_code, room_type, room_floor, room_number, total_bill,payment_type, card_type, card_number,card_exp,card_cvc, arrival_time, leaving_time, check_in, break_fast, lunch, dinner, supply_status, cleaning, towel, s_surprise, food_bill) values('" + firstNameTextBox.Text +
@@ -391,7 +443,7 @@ namespace HotelManagementSystem.UI
             }
             catch (Exception ex)
             {
-                MetroFramework.MetroMessageBox.Show(this, ex.ToString(), "Error", MessageBoxButtons.OKCancel, MessageBoxIcon.Error);
+                MessageBox.Show(this, ex.ToString(), "Error", MessageBoxButtons.OKCancel, MessageBoxIcon.Error);
             }
         }
 
@@ -402,6 +454,13 @@ namespace HotelManagementSystem.UI
 
         private void deleteButton_Click(object sender, EventArgs e)
         {
+            Repository.Delete(primartyID);
+            ComboBoxItemsFromDataBase();
+            LoadForDataGridView();
+            reset_frontend();
+            GetOccupiedRoom();
+            ReservedRoom();
+            getChecked();
             //if (primartyID > 1000)
             //{
             //    string query = "delete from reservation where Id = '" + primartyID + "'";
@@ -439,6 +498,15 @@ namespace HotelManagementSystem.UI
 
         private void updateButton_Click(object sender, EventArgs e)
         {
+            Reservation reservation = BuildReservationFromForm();
+            Repository.Update(reservation);
+            ComboBoxItemsFromDataBase();
+            reset_frontend();
+            LoadForDataGridView();
+            GetOccupiedRoom();
+            ReservedRoom();
+            getChecked();
+
             // birthday = (monthComboBox.SelectedItem) + "-" + (dayComboBox.SelectedIndex + 1) + "-" + yearTextBox.Text;
             //// MessageBox.Show(Convert.ToString(cleaning) + " " + Convert.ToString(towel) + " " + Convert.ToString(surprise));
             // string query = "update reservation set first_name ='" + firstNameTextBox.Text +
@@ -498,6 +566,70 @@ namespace HotelManagementSystem.UI
 
         private void resEditButton_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (resEditButton.SelectedItem == null) return;
+            string idS = resEditButton.SelectedItem.ToString()!.Split('|')[0].Trim();
+            int id = Convert.ToInt32(idS);
+
+            Reservation res = Repository.GetById(id);
+            if (res == null)
+            {
+                MessageBox.Show(this, "Reservation not found.", "Error",
+               MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            taskFinder = true;
+            primartyID = res.Id;
+
+            firstNameTextBox.Text = res.FirstName;
+            lastNameTextBox.Text = res.LastName;
+            phoneNumberTextBox.Text = res.PhoneNumber;
+            emailTextBox.Text = res.EmailAddress;
+            genderComboBox.SelectedItem = res.Gender;
+            qtGuestComboBox.SelectedItem = res.NumberGuest.ToString();
+            addLabel.Text = res.StreetAddress;
+            aptTextBox.Text = res.AptSuite;
+            cityTextBox.Text = res.City;
+            stateComboBox.SelectedItem = res.State;
+            zipComboBox.Text = res.ZipCode;
+            roomTypeComboBox.SelectedItem = res.RoomType.Trim();
+            floorComboBox.SelectedItem = res.RoomFloor.Trim();
+
+            // Add current room back before selecting (getChecked may have removed it)
+            roomNComboBox.Items.Add(res.RoomNumber.Trim());
+            roomNComboBox.SelectedItem = res.RoomNumber.Trim();
+
+            entryDatePicker.Value = res.ArrivalTime.ToDateTime(TimeOnly.MinValue);
+            depDatePicker.Value = res.LeavingTime.ToDateTime(TimeOnly.MinValue);
+
+            checkinCheckBox.Checked = res.CheckIn;
+            foodSupplyCheckBox.Checked = res.SupplyStatus;
+
+            breakfast = res.BreakFast;
+            lunch = res.Lunch;
+            dinner = res.Dinner;
+            foodBill = res.FoodBill;
+
+            cleaning = res.Cleaning ? "1" : "0";
+            towel = res.Towel ? "1" : "0";
+            surprise = res.SSurprise ? "1" : "0";
+
+            // Restore payment fields so FinalizePayment dialog pre-fills correctly
+            FPayment = res.PaymentType;
+            FCnumber = res.CardNumber;
+            FCardCVC = res.CardCvc;
+            FcardExpOne = res.CardExp.Substring(0, res.CardExp.IndexOf('/'));
+            FcardExpTwo = res.CardExp.Substring(res.CardExp.Length - 2);
+
+            // Parse birthday "MM-D-YYYY" back into the three controls
+            string[] bd = res.BirthDay.Split('-');
+            if (bd.Length == 3)
+            {
+                monthComboBox.SelectedItem = bd[0];
+                dayComboBox.SelectedItem = bd[1];
+                yearTextBox.Text = bd[2];
+            }
+
             //  getChecked();
             //  string getQuerystring = resEditButton.Text.Substring(0, 4).Replace(" ", string.Empty);
             ////  MessageBox.Show("ID+" + getQuerystring);
@@ -666,6 +798,12 @@ namespace HotelManagementSystem.UI
 
         private void ComboBoxItemsFromDataBase()
         {
+            resEditButton.Items.Clear();
+            List<Reservation> lst = Repository.GetAllReservations().ToList();
+            foreach (var item in lst)
+            {
+                resEditButton.Items.Add(item.Id + " | " + item.FirstName + " " + item.LastName + " | " + item.PhoneNumber);
+            }
             //string query = "Select * from reservation";
             //SqlConnection connection = new SqlConnection(Hotel_Manager.Properties.Settings.Default.frontend_reservationConnectionString);
 
@@ -694,6 +832,7 @@ namespace HotelManagementSystem.UI
 
         private void LoadForDataGridView()
         {
+            resTotalDataGridView.DataSource = Repository.GetAllReservations();
             //SqlConnection connection = new SqlConnection(Hotel_Manager.Properties.Settings.Default.frontend_reservationConnectionString);
             //SqlCommand query = new SqlCommand("Select * from reservation", connection);
             //try
@@ -731,6 +870,18 @@ namespace HotelManagementSystem.UI
 
         private void GetOccupiedRoom()
         {
+            roomOccupiedListBox.Items.Clear();
+            List<Reservation> lst = Repository.GetOccupied().ToList();
+            foreach (var r in lst)
+            {
+                roomOccupiedListBox.Items.Add(
+                    "[" + r.RoomNumber.Trim() + "]" +
+                    " " + r.RoomType.Trim() +
+                    " " + r.Id +
+                    " [" + r.FirstName + " " + r.LastName + "]" +
+                    " " + r.PhoneNumber);
+            }
+
             //roomOccupiedListBox.Items.Clear();
             //string query = "Select * from reservation where check_in = '" + "True" + "';";
             //SqlConnection connection = new SqlConnection(Hotel_Manager.Properties.Settings.Default.frontend_reservationConnectionString);
@@ -769,8 +920,22 @@ namespace HotelManagementSystem.UI
 
         private void ReservedRoom()
         {
+            roomReservedListBox.Items.Clear();
+            List<Reservation> lst = Repository.GetReserved().ToList();
+            foreach (var r in lst)
+            {
+                roomReservedListBox.Items.Add(
+                        "[" + r.RoomNumber.Trim() + "]" +
+                        " " + r.RoomType.Trim() +
+                        " " + r.Id +
+                        " " + r.FirstName +
+                        " " + r.LastName +
+                        " " + r.PhoneNumber +
+                        " " + r.ArrivalTime.ToString("MM-dd-yyyy") +
+                        " " + r.LeavingTime.ToString("MM-dd-yyyy")
+                    );
+            }
             //roomReservedListBox.Items.Clear();
-
             //string query = "Select * from reservation where check_in = '" + "False" + "';";
             //SqlConnection connection = new SqlConnection(Hotel_Manager.Properties.Settings.Default.frontend_reservationConnectionString);
             //SqlCommand query_table = new SqlCommand(query, connection);
@@ -812,6 +977,16 @@ namespace HotelManagementSystem.UI
 
         private void getChecked()
         {
+            List<string> TakenRoomList = Repository.GetCheckedInRoomNumbers().ToList();
+            foreach (string roomNum in TakenRoomList)
+            {
+                if (roomNComboBox.Items.Contains(roomNum))
+                {
+                    int idx = roomNComboBox.Items.IndexOf(roomNum);
+                    roomNComboBox.Items.RemoveAt(idx);
+                }
+            }
+
             //List<string> TakenRoomList = new List<string>();
 
             //string query = "Select room_number from reservation where check_in = '" + "True" + "';";
@@ -854,10 +1029,27 @@ namespace HotelManagementSystem.UI
             string formatString = String.Format("{0:(000)000-0000}", getphn);
             phoneNumberTextBox.Text = formatString;
         }
-        ReservationRepository reservation=new();
+        ReservationRepository reservation = new();
         private void searchButton_Click(object sender, EventArgs e)
         {
-            List<Reservation> lst=reservation.Search(searchTextBox.Text).ToList();
+            List<Reservation> lst = reservation.Search(searchTextBox.Text).ToList();
+            if (lst.Count == 0)
+            {
+                searchDataGridView.Visible = false;
+                SearchError.Visible = true;
+                SearchError.Text = "SORRY DUDE :(\nCouldnot find your search term "
+                    + searchTextBox.Text + "\nI sure will find it next time.";
+                searchTextBox.Location = new System.Drawing.Point(100, 242);
+                searchButton.Location  = new System.Drawing.Point(1012, 242);
+            }
+            else
+            {
+                searchTextBox.Location = new System.Drawing.Point(100, 10);
+                searchButton.Location  = new System.Drawing.Point(1012, 10);
+                searchDataGridView.DataSource = lst;
+                searchDataGridView.Visible = true;
+                SearchError.Visible = false;
+            }
             //SqlConnection connection = new SqlConnection(Hotel_Manager.Properties.Settings.Default.frontend_reservationConnectionString);
 
             //  connection.Open();
@@ -871,7 +1063,6 @@ namespace HotelManagementSystem.UI
 
             //  BindingSource bindingSource = new BindingSource();
             //  bindingSource.DataSource = data_table;
-            searchDataGridView.DataSource = lst;
             //  data_adapter.Update(data_table);
 
             //  SqlDataReader reader;
@@ -896,6 +1087,11 @@ namespace HotelManagementSystem.UI
         }
 
         private void resPanel_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void resPanel_SelectedIndexChanged_1(object sender, EventArgs e)
         {
 
         }

@@ -98,7 +98,7 @@ namespace HotelManagementSystem.UI
             }
             catch (Exception)
             {
-                MetroFramework.MetroMessageBox.Show(this, "Error Closing the window", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, "Error Closing the window", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -127,7 +127,7 @@ namespace HotelManagementSystem.UI
 
         private void phoneNComboBox_Leave(object sender, EventArgs e)
         {
-            long getphn = Convert.ToInt64(phoneNComboBox.Text);
+            long getphn = Convert.ToInt64(phoneNComboBox?.Text);
             string formatString = String.Format("{0:0000-0000-0000-0000}", getphn);
             phoneNComboBox.Text = formatString;
         }

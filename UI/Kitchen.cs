@@ -11,6 +11,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Data.SqlClient;
+using HotelManagementSystem.Repositories;
+using HotelManagementSystem.Entities.FrontendReservation;
 namespace HotelManagementSystem.UI
 {
     public partial class Kitchen : MetroForm
@@ -36,8 +38,12 @@ namespace HotelManagementSystem.UI
             listBoxFromDataBase();
         }
 
+        ReservationRepository Repository = new();
         private void LoadForDataGridView()
         {
+            List<Reservation> lst = Repository.GetKitchenList().ToList();
+            overviewDataGridView.DataSource =lst;
+
             //if (connection.State != ConnectionState.Open)
             //{
             //    connection.Close();
@@ -85,7 +91,12 @@ namespace HotelManagementSystem.UI
         }
         private void listBoxFromDataBase()
         {
+            List<Reservation> lst= Repository.GetReserved().ToList();
 
+            foreach(var item in lst)
+            {
+                queueListBox.Items.Add(item.Id + "  | " + item.FirstName+ "  " + item.LastName+ " | " + item.PhoneNumber);
+            }
             //queueListBox.Items.Clear();
             //if (connection.State != ConnectionState.Open)
             //{
@@ -122,6 +133,49 @@ namespace HotelManagementSystem.UI
 
         private void queueListBox_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (queueListBox.SelectedItem == null) return;
+            try
+            {
+                resetEntries(this);
+                int id = int.Parse(queueListBox.SelectedItem.ToString()!.Split('|')[0].Trim());
+
+                Reservation res = Repository.GetById(id);
+                if (res == null) return;
+
+                primaryID = res.Id;
+                totalBill = res.TotalBill;
+                foodBill = res.FoodBill;
+                totalBill -= foodBill;   // strip old food bill so it can be recalculated on update
+
+                firstNameTextBox.Text = res.FirstName;
+                lastNameTextBox.Text = res.LastName;
+                phoneNTextBox.Text = res.PhoneNumber;
+                roomTypeTextBox.Text = res.RoomType;
+                floorNTextBox.Text = res.RoomFloor;
+                roomNTextBox.Text = res.RoomNumber;
+
+                breakfast = res.BreakFast;
+                lunch = res.Lunch;
+                dinner = res.Dinner;
+
+                breakfastTextBox.Text = breakfast > 0 ? breakfast.ToString() : "NONE";
+                lunchTextBox.Text = lunch > 0 ? lunch.ToString() : "NONE";
+                dinnerTextBox.Text = dinner > 0 ? dinner.ToString() : "NONE";
+
+                cleaning = res.Cleaning ? "1" : "0";
+                towel = res.Towel ? "1" : "0";
+                surprise = res.SSurprise ? "1" : "0";
+
+                cleaningCheckBox.Checked = res.Cleaning;
+                towelCheckBox.Checked = res.Towel;
+                surpriseCheckBox.Checked = res.SSurprise;
+                supplyCheckBox.Checked = res.SupplyStatus;
+            }
+            catch (Exception ex)
+            {
+                MetroFramework.MetroMessageBox.Show(this, "COMBOBOX Selection: " + ex.Message,
+                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
             //if (connection.State != ConnectionState.Open)
             //{
             //    connection.Close();
@@ -282,6 +336,27 @@ namespace HotelManagementSystem.UI
 
         private void updateButton_Click(object sender, EventArgs e)
         {
+            Reservation res = Repository.GetById(primaryID);
+            res.BreakFast = breakfast;
+            res.Lunch = lunch;
+            res.Dinner = dinner;
+            res.Cleaning = cleaningCheckBox.Checked;
+            res.Towel = towelCheckBox.Checked;
+            res.SSurprise = surpriseCheckBox.Checked;
+            res.SupplyStatus = supply_status;
+            res.FoodBill = foodBill;
+            res.TotalBill = totalBill + foodBill;
+
+
+            Repository.Update(res);
+
+            MetroFramework.MetroMessageBox.Show(this,
+            "Entry successfully updated. UNIQUE USER ID: " + primaryID,
+            "Report", MessageBoxButtons.OK, MessageBoxIcon.Question);
+
+            listBoxFromDataBase();
+            LoadForDataGridView();
+            resetEntries(this);
             //if (connection.State != ConnectionState.Open)
             //{
             //    connection.Close();

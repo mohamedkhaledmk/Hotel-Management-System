@@ -92,7 +92,9 @@ namespace HotelManagementSystem.UI
 
         public bool verifier(string tableName, string username, string password)
         {
-            return Context.Frontends.Any(u => u.UserName == username && u.Password == password);
+            if(tableName=="kitchen")
+                return Context.Kitchens.Any(u => u.UserName == username && u.Password == password);
+            else return Context.Frontends.Any(u => u.UserName == username && u.Password == password);
             //bool success = false;
             //SqlConnection connection = new SqlConnection(Hotel_Manager.Properties.Settings.Default.loginConnectionString);
             //string sql = "SELECT* FROM "  +tableName+ " WHERE user_name=@userName AND pass_word=@password";
