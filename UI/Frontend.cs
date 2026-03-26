@@ -171,6 +171,7 @@ namespace HotelManagementSystem.UI
 
         private void roomTypeComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (roomTypeComboBox.SelectedItem == null) return;
 
             if (roomTypeComboBox.SelectedItem.Equals("Single"))
             {
@@ -197,6 +198,9 @@ namespace HotelManagementSystem.UI
                 totalAmount = 499;
                 floorComboBox.SelectedItem = "5";
             }
+
+            if (qtGuestComboBox.SelectedItem == null) return;
+
             int selectedTemp = 0;
             string selected;
             bool temp = int.TryParse(qtGuestComboBox.SelectedItem.ToString(), out selectedTemp);
@@ -230,6 +234,7 @@ namespace HotelManagementSystem.UI
 
             submitButton.Visible = false;
             updateButton.Visible = true;
+            updateButton.Enabled = true;
             deleteButton.Visible = true;
             resEditButton.Visible = true;
 
@@ -499,6 +504,7 @@ namespace HotelManagementSystem.UI
         private void updateButton_Click(object sender, EventArgs e)
         {
             Reservation reservation = BuildReservationFromForm();
+            reservation.Id = primartyID;
             Repository.Update(reservation);
             ComboBoxItemsFromDataBase();
             reset_frontend();
@@ -585,19 +591,20 @@ namespace HotelManagementSystem.UI
             lastNameTextBox.Text = res.LastName;
             phoneNumberTextBox.Text = res.PhoneNumber;
             emailTextBox.Text = res.EmailAddress;
-            genderComboBox.SelectedItem = res.Gender;
-            qtGuestComboBox.SelectedItem = res.NumberGuest.ToString();
+            genderComboBox.SelectedIndex    = genderComboBox.FindStringExact(res.Gender.Trim());
+            qtGuestComboBox.SelectedIndex   = qtGuestComboBox.FindStringExact(res.NumberGuest.ToString());
             addLabel.Text = res.StreetAddress;
             aptTextBox.Text = res.AptSuite;
             cityTextBox.Text = res.City;
-            stateComboBox.SelectedItem = res.State;
+            stateComboBox.SelectedIndex     = stateComboBox.FindStringExact(res.State.Trim());
             zipComboBox.Text = res.ZipCode;
-            roomTypeComboBox.SelectedItem = res.RoomType.Trim();
-            floorComboBox.SelectedItem = res.RoomFloor.Trim();
+            roomTypeComboBox.SelectedIndex  = roomTypeComboBox.FindStringExact(res.RoomType.Trim());
+            floorComboBox.SelectedIndex     = floorComboBox.FindStringExact(res.RoomFloor.Trim());
 
             // Add current room back before selecting (getChecked may have removed it)
-            roomNComboBox.Items.Add(res.RoomNumber.Trim());
-            roomNComboBox.SelectedItem = res.RoomNumber.Trim();
+            if (!roomNComboBox.Items.Contains(res.RoomNumber.Trim()))
+                roomNComboBox.Items.Add(res.RoomNumber.Trim());
+            roomNComboBox.SelectedIndex     = roomNComboBox.FindStringExact(res.RoomNumber.Trim());
 
             entryDatePicker.Value = res.ArrivalTime.ToDateTime(TimeOnly.MinValue);
             depDatePicker.Value = res.LeavingTime.ToDateTime(TimeOnly.MinValue);
@@ -618,8 +625,17 @@ namespace HotelManagementSystem.UI
             FPayment = res.PaymentType;
             FCnumber = res.CardNumber;
             FCardCVC = res.CardCvc;
-            FcardExpOne = res.CardExp.Substring(0, res.CardExp.IndexOf('/'));
-            FcardExpTwo = res.CardExp.Substring(res.CardExp.Length - 2);
+            int slashIndex = res.CardExp.IndexOf('/');
+            if (slashIndex >= 0)
+            {
+                FcardExpOne = res.CardExp.Substring(0, slashIndex);
+                FcardExpTwo = res.CardExp.Substring(slashIndex + 1);
+            }
+            else
+            {
+                FcardExpOne = res.CardExp;
+                FcardExpTwo = "";
+            }
 
             // Parse birthday "MM-D-YYYY" back into the three controls
             string[] bd = res.BirthDay.Split('-');

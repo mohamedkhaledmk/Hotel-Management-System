@@ -350,7 +350,7 @@ namespace HotelManagementSystem.UI
 
             Repository.Update(res);
 
-            MetroFramework.MetroMessageBox.Show(this,
+            MessageBox.Show(this,
             "Entry successfully updated. UNIQUE USER ID: " + primaryID,
             "Report", MessageBoxButtons.OK, MessageBoxIcon.Question);
 
